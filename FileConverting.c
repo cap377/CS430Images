@@ -6,9 +6,9 @@
 #include <unistd.h>
 
 typedef struct Pixel{
-	int red;
-	int green;
-	int blue;
+	unsigned char red;
+	unsigned char green;
+	unsigned char blue;
 } Pixel;
 
 FILE *input_fp, *output_fp;
@@ -80,16 +80,18 @@ void p6_to_p3(FILE *input, FILE *output, Pixel *buffer){
 	
 	// generating pixel buffer
 	Pixel new;
-	fread(&new.red, 1, 1, input);
-	fread(&new.green, 1, 1, input);
-	fread(&new.blue, 1, 1, input);
-	fprintf(output, "%d %d %d", new.red, new.green, new.blue);
+	while(!feof(input)){
+		fread(&new.red, 1, 1, input);
+		fread(&new.green, 1, 1, input);
+		fread(&new.blue, 1, 1, input);
+		fprintf(output, "%i %i %i ", new.red, new.green, new.blue);
+	}
 }
 
 FILE* escape_comments(FILE *input, int c){
 	if(c == '#'){
+		printf("Traversing comments...\n");
 		while(c != '\n'){
-			printf("traversing comments...\n");
 			c = fgetc(input);
 		}
 		printf("escaped comments\n");
