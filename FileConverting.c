@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string.h>
 
 typedef struct Pixel{
 	unsigned char red;
@@ -14,7 +15,8 @@ typedef struct Pixel{
 FILE *input_fp, *output_fp;
 int height, width, depth;
 
-void p6_to_p3(FILE *input, FILE *output, Pixel *buffer);
+void p6_to_p3(FILE *input, FILE *output);
+void p3_to_p6(FILE *input, FILE *output);
 FILE* escape_comments(FILE *input, int c);
 
 int main(int argc, char** argv){
@@ -22,7 +24,17 @@ int main(int argc, char** argv){
 	int size;
 	int c;
 	
-	input_fp = fopen("upraw.ppm", "rb");
+	if(argc < 4){
+		printf("Not enough args...\n");
+	}
+	/*if(strcmp(argv[1], "3")){
+		printf("Is 3\n");
+	}
+	else if(strcmp(argv[1], "6")){
+		printf("Is 6\n");
+	}*/
+	
+	input_fp = fopen("upascii.ppm", "rb");
 	if(input_fp == NULL){
 		perror("File was not found");
 	}
@@ -35,8 +47,6 @@ int main(int argc, char** argv){
 	size = ftell(input_fp);
 	printf("Size of file: %i\n", size);
 	fseek(input_fp, 0, SEEK_SET);
-	
-	Pixel *buffer = malloc(size+1);
 	
 	c = fgetc(input_fp);
 	if(c != 80){
@@ -53,20 +63,22 @@ int main(int argc, char** argv){
 	
 	if(c == 51){
 		//send fp to conversion function
+		p3_to_p6(input_fp, output_fp);
 	}
 	if(c == 54){
-		p6_to_p3(input_fp, output_fp, buffer);
+		//send fp to conversion function
+		p6_to_p3(input_fp, output_fp);
 	}
 	
 	return 0;
 }
 
-void p6_to_p3(FILE *input, FILE *output, Pixel *buffer){
+void p6_to_p3(FILE *input, FILE *output){
 	int c;
 	c = fgetc(input);
 	if(c != '\n'){
-		printf("Incorrect .PPM file type\n");
-		EXIT_FAILURE;
+		fprintf(stderr, "Incorrect .PPM file type\n");
+		exit(1);
 	}
 	
 	// placing P3 header info into new file
@@ -78,7 +90,7 @@ void p6_to_p3(FILE *input, FILE *output, Pixel *buffer){
 	fscanf(input, "\n%d %d\n%d\n", &width, &height, &depth);
 	fprintf(output, "%d %d\n%d\n", width, height, depth);
 	
-	// generating pixel buffer
+	// generating reading and writing pixels
 	Pixel new;
 	while(!feof(input)){
 		fread(&new.red, 1, 1, input);
@@ -87,6 +99,38 @@ void p6_to_p3(FILE *input, FILE *output, Pixel *buffer){
 		fprintf(output, "%i %i %i ", new.red, new.green, new.blue);
 	}
 }
+
+void p3_to_p6(FILE *input, FILE *output){
+	int c;
+	c = fgetc(input);
+	if(c != '\n'){
+		fprintf(stderr, "Incorrect .PPM file type\n");
+		exit(1);
+	}
+	
+	// placing P6 header info into new file
+	c = fgetc(input);
+	fprintf(output, "P6\n");
+	input = escape_comments(input, c);
+	
+	// transfering image dimension header info to new file
+	fscanf(input, "\n%d %d\n%d\n", &width, &height, &depth);
+	fprintf(output, "%d %d\n%d\n", width, height, depth);
+	
+	// reading and writing pixels
+	Pixel new;
+	Pixel *buffer = malloc(sizeof(Pixel)*width*height);
+	int count = 0;
+	while(!feof(input)){
+		fread(&new.red, 1, 1, input);
+		fread(&new.green, 1, 1, input);
+		fread(&new.blue, 1, 1, input);
+		buffer[count] = new;
+		count++;
+	}
+	fwrite(buffer, sizeof(Pixel), width*height, output);
+}
+
 
 FILE* escape_comments(FILE *input, int c){
 	if(c == '#'){
