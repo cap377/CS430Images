@@ -36,11 +36,13 @@ int main(int argc, char** argv){
 	
 	input_fp = fopen("upascii.ppm", "rb");
 	if(input_fp == NULL){
-		perror("File was not found");
+		printf("Error: File was not found\n");
+		return 1;
 	}
 	output_fp = fopen("something.ppm", "wb+");
 	if(output_fp == NULL){
-		perror("Output file failed in creation");
+		printf("Error: Output file failed in creation\n");
+		return 1;
 	}
 	
 	fseek(input_fp, 0, SEEK_END);
@@ -132,7 +134,6 @@ void p3_to_p6(FILE *input, FILE *output){
 	// reading and writing pixels
 	Pixel new;
 	Pixel *buffer = malloc(sizeof(Pixel)*width*height);
-	printf("size of pixel buffer: %li\n", sizeof(Pixel)*width*height);
 	int count = 0;
 	while(!feof(input)){
 		fscanf(input, "%hhu ", &new.red);
@@ -151,9 +152,12 @@ FILE* escape_comments(FILE *input, int c){
 		while(c != '\n'){
 			c = fgetc(input);
 		}
-		printf("escaped comments\n");
-		//c = fgetc(input);
+		printf("Escaped comments\n");
+		c = fgetc(input);
 		input = escape_comments(input, c);
+	}
+	else{
+		fseek(input, -1, SEEK_CUR);
 	}
 	return input;
 }
