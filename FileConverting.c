@@ -38,7 +38,7 @@ int main(int argc, char** argv){
 	if(input_fp == NULL){
 		perror("File was not found");
 	}
-	output_fp = fopen("something.ppm", "wb");
+	output_fp = fopen("something.ppm", "wb+");
 	if(output_fp == NULL){
 		perror("Output file failed in creation");
 	}
@@ -88,14 +88,22 @@ void p6_to_p3(FILE *input, FILE *output){
 	
 	// transfering image dimension header info to new file
 	fscanf(input, "\n%d %d\n%d\n", &width, &height, &depth);
+	if(depth > 255){
+		printf("Error: Image not an 8 bit channel\n");
+		exit(1);
+	}
 	fprintf(output, "%d %d\n%d\n", width, height, depth);
 	
 	// generating reading and writing pixels
 	Pixel new;
+	Pixel *buffer = malloc(sizeof(Pixel)*width*height);
+	int count = 0;
 	while(!feof(input)){
 		fread(&new.red, 1, 1, input);
 		fread(&new.green, 1, 1, input);
 		fread(&new.blue, 1, 1, input);
+		buffer[count] = new;
+		count++;
 		fprintf(output, "%i %i %i ", new.red, new.green, new.blue);
 	}
 }
@@ -115,20 +123,25 @@ void p3_to_p6(FILE *input, FILE *output){
 	
 	// transfering image dimension header info to new file
 	fscanf(input, "\n%d %d\n%d\n", &width, &height, &depth);
+	if(depth > 255){
+		printf("Error: Image not an 8 bit channel\n");
+		exit(1);
+	}
 	fprintf(output, "%d %d\n%d\n", width, height, depth);
 	
 	// reading and writing pixels
 	Pixel new;
 	Pixel *buffer = malloc(sizeof(Pixel)*width*height);
+	printf("size of pixel buffer: %li\n", sizeof(Pixel)*width*height);
 	int count = 0;
 	while(!feof(input)){
-		fread(&new.red, 1, 1, input);
-		fread(&new.green, 1, 1, input);
-		fread(&new.blue, 1, 1, input);
+		fscanf(input, "%hhu ", &new.red);
+		fscanf(input, "%hhu ", &new.green);
+		fscanf(input, "%hhu ", &new.blue);
 		buffer[count] = new;
 		count++;
 	}
-	fwrite(buffer, sizeof(Pixel), width*height, output);
+	fwrite(buffer, sizeof(Pixel), count, output);
 }
 
 
