@@ -6,40 +6,54 @@
 #include <unistd.h>
 #include <string.h>
 
+// creating pixel structure
 typedef struct Pixel{
 	unsigned char red;
 	unsigned char green;
 	unsigned char blue;
 } Pixel;
 
+// global variables
 FILE *input_fp, *output_fp;
 int height, width, depth;
 
+// prototype declarations
 void p6_to_p3(FILE *input, FILE *output);
+void p6_to_p6(FILE *input, FILE *output);
 void p3_to_p6(FILE *input, FILE *output);
+void p3_to_p3(FILE *input, FILE *output);
 FILE* escape_comments(FILE *input, int c);
 
-int main(int argc, char** argv){
+
+int main(int argc, char **argv){
 	
+	// initializing variables
 	int size;
 	int c;
 	
-	if(argc < 4){
+	// checking for the correct number of args
+	if(argc !=  4){
 		printf("Not enough args...\n");
+		//return 1;
 	}
-	/*if(strcmp(argv[1], "3")){
-		printf("Is 3\n");
+	if(strcmp(argv[1], "3") == 0){
+		printf("3Is %s\n", argv[1]);
 	}
-	else if(strcmp(argv[1], "6")){
-		printf("Is 6\n");
-	}*/
+	else if(strcmp(argv[1], "6") == 0){
+		printf("6Is %s\n", argv[1]);
+	}
+	else{
+		printf("Error: Can only convert to P3 or P6\n");
+		return 1;
+	}
 	
-	input_fp = fopen("upascii.ppm", "rb");
+	// opening input and output files
+	input_fp = fopen(argv[2], "rb");
 	if(input_fp == NULL){
 		printf("Error: File was not found\n");
 		return 1;
 	}
-	output_fp = fopen("something.ppm", "wb+");
+	output_fp = fopen(argv[3], "wb+");
 	if(output_fp == NULL){
 		printf("Error: Output file failed in creation\n");
 		return 1;
@@ -64,14 +78,26 @@ int main(int argc, char** argv){
 	}
 	
 	if(c == 51){
-		//send fp to conversion function
-		p3_to_p6(input_fp, output_fp);
+		if(strcmp(argv[1], "6") == 0){
+			//send fp to conversion function
+			p3_to_p6(input_fp, output_fp);
+		}
+		else if(strcmp(argv[1], "3") == 0){
+			p3_to_p3(input_fp, output_fp);
+		}
 	}
 	if(c == 54){
-		//send fp to conversion function
-		p6_to_p3(input_fp, output_fp);
+		if(strcmp(argv[1], "3") == 0){
+			//send fp to conversion function
+			p6_to_p3(input_fp, output_fp);
+		}
+		else if(strcmp(argv[1], "6") == 0){
+			p6_to_p6(input_fp, output_fp);
+		}
 	}
 	
+	fclose(input_fp);
+	fclose(output_fp);
 	return 0;
 }
 
@@ -110,7 +136,7 @@ void p6_to_p3(FILE *input, FILE *output){
 	}
 }
 
-void p3_to_p6(FILE *input, FILE *output){
+void p6_to_p6(FILE *input, FILE *output){
 	int c;
 	c = fgetc(input);
 	if(c != '\n'){
@@ -131,6 +157,41 @@ void p3_to_p6(FILE *input, FILE *output){
 	}
 	fprintf(output, "%d %d\n%d\n", width, height, depth);
 	
+	// generating reading and writing pixels
+	Pixel new;
+	Pixel *buffer = malloc(sizeof(Pixel)*width*height);
+	int count = 0;
+	while(!feof(input)){
+		fread(&new.red, 1, 1, input);
+		fread(&new.green, 1, 1, input);
+		fread(&new.blue, 1, 1, input);
+		buffer[count] = new;
+		count++;
+	}
+	fwrite(buffer, sizeof(Pixel), count, output);
+}
+
+void p3_to_p6(FILE *input, FILE *output){
+	int c;
+	c = fgetc(input);
+	if(c != '\n'){
+		fprintf(stderr, "Incorrect .PPM file type\n");
+		exit(1);
+	}
+	
+	// placing P6 header info into new file
+	c = fgetc(input);
+	fprintf(output, "P6\n");
+	input = escape_comments(input, c);
+	
+	// transfering image dimension header info to new file
+	fscanf(input, "%d %d\n%d\n", &width, &height, &depth);
+	if(depth > 255){
+		printf("Error: Image not an 8 bit channel\n");
+		exit(1);
+	}
+	fprintf(output, "%d %d\n%d\n", width, height, depth);
+	
 	// reading and writing pixels
 	Pixel new;
 	Pixel *buffer = malloc(sizeof(Pixel)*width*height);
@@ -143,6 +204,41 @@ void p3_to_p6(FILE *input, FILE *output){
 		count++;
 	}
 	fwrite(buffer, sizeof(Pixel), count, output);
+}
+
+void p3_to_p3(FILE *input, FILE *output){
+	int c;
+	c = fgetc(input);
+	if(c != '\n'){
+		fprintf(stderr, "Incorrect .PPM file type\n");
+		exit(1);
+	}
+	
+	// placing P3 header info into new file
+	c = fgetc(input);
+	fprintf(output, "P3\n");
+	input = escape_comments(input, c);
+	
+	// transfering image dimension header info to new file
+	fscanf(input, "%d %d\n%d\n", &width, &height, &depth);
+	if(depth > 255){
+		printf("Error: Image not an 8 bit channel\n");
+		exit(1);
+	}
+	fprintf(output, "%d %d\n%d\n", width, height, depth);
+	
+	// reading and writing pixels
+	Pixel new;
+	Pixel *buffer = malloc(sizeof(Pixel)*width*height);
+	int count = 0;
+	while(!feof(input)){
+		fscanf(input, "%hhu ", &new.red);
+		fscanf(input, "%hhu ", &new.green);
+		fscanf(input, "%hhu ", &new.blue);
+		buffer[count] = new;
+		fprintf(output, "%i %i %i ", new.red, new.green, new.blue);
+		count++;
+	}
 }
 
 
